@@ -1,0 +1,127 @@
+---
+title: "machine learning"
+author: "Seke Pascal"
+date: "November 6, 2016"
+output: html_document
+---
+
+## Executive Introduction
+
+In this project i will predict the manner in which they did the exercise. This is the "classe" variable in the training set. i will use any of the other variables to predict the exercise. I wil create a report describing how i built my model, how i used cross validation, what i think the expected out of sample error is, and why you made the choices you did. And finaly i will also use my prediction model to predict 20 different test cases. now let's load the package we will used for this project but before that let's state the background of this project.
+
+## Background
+
+Using devices such as Jawbone Up, Nike FuelBand, and Fitbit it is now possible to collect a large amount of data about personal activity relatively inexpensively. These type of devices are part of the quantified self movement - a group of enthusiasts who take measurements about themselves regularly to improve their health, to find patterns in their behavior, or because they are tech geeks. One thing that people regularly do is quantify how much of a particular activity they do, but they rarely quantify how well they do it. In this project, your goal will be to use data from accelerometers on the belt, forearm, arm, and dumbell of 6 participants. They were asked to perform barbell lifts correctly and incorrectly in 5 different ways. More information is available from the website here: http://groupware.les.inf.puc-rio.br/har (see the section on the Weight Lifting Exercise Dataset).
+
+### Load packages
+
+In this assignment we will explore the data using the package `caret`, `rpart`, and `randomForest` for our prediction.
+load the different package: 
+
+```{r}
+library(knitr)
+library(caret)
+library(rpart)
+library(randomForest)
+set.seed(3223)
+```
+
+### Data loading
+
+data was downloaded directly to my home directory via the url and will be read directly from the preceding directory.
+
+```{r}
+training <- read.csv("pml-training.csv",row.names=1,na.strings = "")
+testing <- read.csv("pml-testing.csv",row.names=1,na.strings = "NA")
+```
+
+let's create a partition for our usable dataset.
+
+```{r}
+inTrain  <- createDataPartition(training$classe, p=0.7, list=FALSE)
+TrainSet <- training[inTrain, ]
+TestSet  <- training[-inTrain, ]
+dim(TrainSet)
+```
+
+```{r}
+dim(TestSet)
+```
+
+let's remove variables with Nearly Zero Variance and all the NA's on th data.
+
+```{r}
+N_Z_V <- nearZeroVar(TrainSet)
+TrainSet <- TrainSet[, -N_Z_V]
+TestSet  <- TestSet[, -N_Z_V]
+dim(TrainSet)
+```
+
+Removing the NA's
+
+```{r}
+AllNA    <- sapply(TrainSet, function(x) mean(is.na(x))) > 0.95
+TrainSet <- TrainSet[, AllNA==FALSE]
+TestSet  <- TestSet[, AllNA==FALSE]
+dim(TestSet)
+```
+
+Removing unuseful variable from column(1:5)
+
+```{r}
+TrainSet <- TrainSet[, -(1:5)]
+TestSet  <- TestSet[, -(1:5)]
+dim(TrainSet)
+```
+
+## Prediction method: Random Forest
+
+one  method will be applied to model the regressions (in the Train dataset) and the best one (with higher accuracy when applied to the Test dataset) will be used for the quiz predictions. The method is: Random Forests.
+
+
+```{r}
+set.seed(3223)
+RF_control <- trainControl(method="cv", number=3, verboseIter=FALSE)
+```
+
+```{r}
+Fit_RandForest <- train(classe ~ ., data=TrainSet, method="rf",
+                          trControl=RF_control)
+Fit_RandForest$finalModel
+```
+
+
+let's do some prediction now on the test data.
+
+```{r}
+predict_RandForest <- predict(Fit_RandForest, newdata=TestSet)
+confMat_RandForest <- confusionMatrix(predict_RandForest, TestSet$classe)
+confMat_RandForest
+```
+
+we can see that the confusion matrix give us an accuracy of .9941 we can conclude that the random forest method is the best method for our prediction. but now,
+let's have a look on the matrix result.
+
+```{r}
+plot(confMat_RandForest$table, col = confMat_RandForest$byClass, 
+     main = paste("Random Forest - Accuracy =",
+                  round(confMat_RandForest$overall['Accuracy'], 4)))
+```
+
+let's use the Random Forest model to predict our data.
+
+## Prediction for the 20 question quiz.
+
+```{r}
+data_predict <- predict(Fit_RandForest, newdata=testing)
+data_predict
+```
+
+
+
+
+
+
+
+
+
